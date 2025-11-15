@@ -1,13 +1,13 @@
-# Python
 venv/
 __pycache__/
 *.pyc
 *egg-info/
 .python-version
 
-# VsCode
-.vscode/*
+.git/
+.gitignore
 
+.vscode/*
 assets/*
 
-.git/
+README.md
