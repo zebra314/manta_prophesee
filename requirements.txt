@@ -19,5 +19,6 @@ sk-video==1.1.10
 tensorboard
 importlib-metadata<=7.1,>=6.0
 
+# For Raspberry Pi GPIO control
 gpiozero
 RPi.GPIO
