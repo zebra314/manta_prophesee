@@ -16,7 +16,7 @@ run:
 		--device=/dev/dri \
 		--group-add video \
 		--mount type=bind,source=$(CURDIR)/assets,target=/root/assets \
-		--mount type=bind,source=$(CURDIR)/example,target=/root/example \
+		--mount type=bind,source=$(CURDIR)/examples,target=/root/examples \
 		--mount type=bind,source=$(CURDIR)/scripts,target=/root/scripts \
 		--mount type=bind,source=$(CURDIR)/src,target=/root/src \
 		manta_propheese:latest zsh
