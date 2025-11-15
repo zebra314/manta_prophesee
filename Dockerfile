@@ -1,90 +1,96 @@
-FROM --platform=$BUILDPLATFORM prophesee/openeb:ubuntu-22.04
+FROM ubuntu:22.04
 
-# Specify terminal color
+# Global environment
 ENV TERM=xterm-256color
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt update && apt install -y curl 
-RUN apt update && apt install -y git 
+RUN apt-get update
 
-# Install zsh
-RUN apt-get update && apt-get install -y zsh
+# Basics
+RUN apt-get install -y --no-install-recommends ca-certificates  git wget unzip
+RUN apt-get install -y --no-install-recommends curl
+RUN apt-get install -y --no-install-recommends git
+RUN apt-get install -y --no-install-recommends wget
+RUN apt-get install -y --no-install-recommends unzip
+
+# Shell
+RUN apt-get install -y --no-install-recommends zsh
 RUN chsh -s $(which zsh)
 
-# Install oh-my-zsh
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+# Build tools
+RUN apt-get install -y --no-install-recommends build-essential
+RUN apt-get install -y --no-install-recommends cmake
+RUN apt-get install -y --no-install-recommends software-properties-common
 
-# Install p10k
+# SDK dependencies
+RUN apt-get install -y --no-install-recommends libopencv-dev
+RUN apt-get install -y --no-install-recommends libboost-all-dev
+RUN apt-get install -y --no-install-recommends libusb-1.0-0-dev
+RUN apt-get install -y --no-install-recommends libprotobuf-dev
+RUN apt-get install -y --no-install-recommends protobuf-compiler
+RUN apt-get install -y --no-install-recommends libhdf5-dev
+RUN apt-get install -y --no-install-recommends hdf5-tools
+RUN apt-get install -y --no-install-recommends libglew-dev
+RUN apt-get install -y --no-install-recommends libglfw3-dev
+RUN apt-get install -y --no-install-recommends libcanberra-gtk-module
+RUN apt-get install -y --no-install-recommends ffmpeg
+RUN apt-get install -y --no-install-recommends tmux
+RUN apt-get install -y --no-install-recommends mesa-utils
+RUN apt-get install -y --no-install-recommends usbutils
+RUN apt-get install -y --no-install-recommends udev
+RUN apt-get install -y --no-install-recommends python3.10
+RUN apt-get install -y --no-install-recommends python3-pip
+RUN apt-get install -y --no-install-recommends python3.10-venv
+
+# Setup shell: oh-my-zsh, p10k, plugins
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" -- -y
 RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/g' ~/.zshrc
-COPY config/.p10k.zsh /root/.p10k.zsh
-COPY config/.zshrc /root/.zshrc
+RUN git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-/root/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+RUN git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-/root/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' /root/.zshrc
+RUN sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' /root/.zshrc
 
-# Copy gitstatus binary
-COPY config/gitstatus /root/.cache/gitstatus
+COPY config/.p10k.zsh config/.zshrc /root/
 
-# Install zsh plugins
-RUN git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-RUN git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-RUN sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/g' ~/.zshrc
-
-# Dependencies for building the SDK
-RUN apt update && apt install -y apt-utils
-RUN apt update && apt install -y build-essential
-RUN apt update && apt install -y software-properties-common 
-RUN apt update && apt install -y wget 
-RUN apt update && apt install -y unzip 
-RUN apt update && apt install -y cmake
-RUN apt update && apt install -y libopencv-dev
-RUN apt update && apt install -y libboost-all-dev 
-RUN apt update && apt install -y libusb-1.0-0-dev 
-RUN apt update && apt install -y libprotobuf-dev 
-RUN apt update && apt install -y protobuf-compiler
-RUN apt update && apt install -y libhdf5-dev 
-RUN apt update && apt install -y hdf5-tools 
-RUN apt update && apt install -y libglew-dev 
-RUN apt update && apt install -y libglfw3-dev 
-RUN apt update && apt install -y libcanberra-gtk-module 
-RUN apt update && apt install -y ffmpeg
-RUN apt update && apt install -y tmux
-RUN apt update && apt install -y mesa-utils
-RUN apt update && apt install -y usbutils
-RUN apt update && apt install -y udev
-
-# Dependencies for test (optional)
-# RUN apt update && apt install -y libgtest-dev
-# RUN apt update && apt install -y libgmock-dev
-
-# Python
-RUN apt update && apt install -y python3.10
+# Setup python environment
+RUN python3 -m venv /opt/prophesee/psee-py3venv --system-site-packages
 RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
-RUN python3 -m venv /opt/prophesee/psee-py3venv --system-site-packages
+ENV PATH="/opt/prophesee/psee-py3venv/bin:$PATH"
 
 # Install pip dependencies
-COPY requirements_openeb.txt ./openeb_environment/requirements_openeb.txt
-RUN /opt/prophesee/psee-py3venv/bin/python3 -m pip install pip --upgrade \
-  && /opt/prophesee/psee-py3venv/bin/python3 -m pip install -r openeb_environment/requirements_openeb.txt \
-  && rm -rf ~/.cache/pip/*
+RUN pip install --upgrade pip
+COPY requirements.txt /tmp/
+RUN pip install -r /tmp/requirements.txt
+RUN rm -rf /root/.cache/pip /tmp/requirements.txt
 
-# Install pybind11 v2.11.0
+# Install pybind11 v2.11.0 (system-wide)
 WORKDIR /opt
-RUN wget https://github.com/pybind/pybind11/archive/v2.11.0.zip && \
-  unzip v2.11.0.zip && \
-  cd pybind11-2.11.0 && \
-  mkdir build && cd build && \
-  cmake .. -DPYBIND11_TEST=OFF && \
-  cmake --build . && \
-  cmake --install .
+RUN wget -q https://github.com/pybind/pybind11/archive/v2.11.0.zip
+RUN unzip v2.11.0.zip
+RUN cd pybind11-2.11.0
+RUN mkdir build
+WORKDIR /opt/pybind11-2.11.0/build
+RUN cmake .. -DPYBIND11_TEST=OFF
+RUN cmake --build . --config Release
+RUN cmake --install .
+RUN cd /opt
+RUN rm -rf pybind11-2.11.0 v2.11.0.zip
 
-# Build the SDK
+# Build Prophesee OpenEB SDK (branch 5.1.1)
 RUN export PYTHONNOUSERSITE=true
-RUN git clone https://github.com/prophesee-ai/openeb.git --branch 5.1.1
-RUN python -m pip install -r openeb/utils/python/requirements_openeb.txt
-RUN cd openeb && \
-  mkdir build && cd build && \
-  cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCOMPILE_PYTHON3_BINDINGS=ON -DPython3_EXECUTABLE=/usr/bin/python3.10 && \
-  cmake --build . --config Release -- -j$(nproc) && \
-  cmake --build . --target install
+RUN git clone --branch 5.1.1 --depth 1 https://github.com/prophesee-ai/openeb.git /opt/openeb
+RUN pip install -r /opt/openeb/utils/python/requirements_openeb.txt
+RUN cd /opt/openeb
+RUN mkdir build
+WORKDIR /opt/openeb/build
+RUN cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTING=OFF \
+    -DCOMPILE_PYTHON3_BINDINGS=ON \
+    -DPython3_EXECUTABLE=$(which python3)
+RUN cmake --build . --config Release -- -j$(nproc)
+RUN cmake --build . --target install
 
 ENV LD_LIBRARY_PATH=""
 ENV LD_LIBRARY_PATH="/opt/openeb/build/lib:${LD_LIBRARY_PATH}"
@@ -96,11 +102,15 @@ WORKDIR /root
 RUN python -m pip install -e .
 RUN rm setup.py
 
+# Entrypoint
 COPY bash/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Remove apt cache
-RUN rm -rf /var/lib/apt/lists/*
+# Final cleanup
+RUN apt-get purge -y --auto-remove cmake
+RUN apt-get purge -y --auto-remove unzip
+RUN apt-get purge -y --auto-remove ca-certificates
+RUN rm -rf /var/lib/apt/lists/* /root/.cache /opt/*.zip
 
-WORKDIR /root/
+WORKDIR /root
