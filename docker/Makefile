@@ -1,17 +1,7 @@
-IMAGE_NAME ?= manta_prophesee
 
-all: ensure-build run
 
-# ---------------------------------------------------------------------------- #
-#                               Rsync Commands                                 #
-# ---------------------------------------------------------------------------- #
-rsync:
-	rsync -avz --progress --exclude-from='rsync_exclude.txt' \
-		$(CURDIR) eb@172.20.10.2:~/Git_workspace/manta_prophesee/
-
-pull-raw:
-	rsync -avz --progress \
-		eb@172.20.10.2:~/Git_workspace/manta_prophesee/assets/ $(CURDIR)/assets/
+all: ensure-build container-rm
+	$(MAKE) run ARG="$(ARG)"
 
 # ---------------------------------------------------------------------------- #
 #                            Docker Builtin Commands                           #
@@ -19,7 +9,7 @@ pull-raw:
 
 # Build the image
 build:
-	docker build -t $(IMAGE_NAME):latest -f docker/Dockerfile .
+	docker build -t $(IMAGE_NAME):latest .
 
 # Save the image to a tar file
 save:
@@ -50,12 +40,12 @@ run:
 		-v /tmp/.X11-unix:/tmp/.X11-unix:rw \
 		--device=/dev/dri \
 		--group-add video \
-		--mount type=bind,source=$(CURDIR)/assets,target=/root/assets \
-		--mount type=bind,source=$(CURDIR)/examples,target=/root/examples \
-		--mount type=bind,source=$(CURDIR)/scripts,target=/root/scripts \
-		--mount type=bind,source=$(CURDIR)/src,target=/root/src \
+		--mount type=bind,source=$(CURDIR)/../assets,target=/root/assets \
+		--mount type=bind,source=$(CURDIR)/../examples,target=/root/examples \
+		--mount type=bind,source=$(CURDIR)/../scripts,target=/root/scripts \
+		--mount type=bind,source=$(CURDIR)/../src,target=/root/src \
 		--name $(IMAGE_NAME) \
-		$(IMAGE_NAME):latest zsh
+		$(IMAGE_NAME):latest $(ARG)
 	xhost -local:root
 
 # Start the container
@@ -102,7 +92,7 @@ ensure-build:
 		else \
 			echo -e "\e[1;36mCached image is different, replacing the cached image\e[0m"; \
 			$(MAKE) save; \
-			sha256sum docker/Dockerfile > tmp/dockerfile-hash.txt; \
+			sha256sum Dockerfile > tmp/dockerfile-hash.txt; \
 		fi; \
 	else \
 		echo -e "\e[1;36mNetwork is down, finding the cached image\e[0m"; \
